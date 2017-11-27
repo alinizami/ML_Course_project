@@ -1,0 +1,105 @@
+---
+title: "ML course project"
+author: "Ali Nizami"
+date: "November 26, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+Loading the data and libraries:
+```{r cars}
+
+library(caret)
+my_data<-read.csv('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv')
+
+final_testing<- read.csv('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv')
+
+dim(my_data)
+
+
+
+```
+
+
+removing the following from my data:
+1) near zero variability 
+2) NA values 
+
+```{r }
+
+my_data2<-my_data[,-nearZeroVar(my_data)]
+
+my_data3<-my_data2[,colSums(is.na(my_data2)) == 0]
+
+my_data4 <- my_data3[,6:dim(my_data3)[2]]
+
+dim(my_data4)
+```
+
+We split our data into train and test sets below
+
+```{r }
+##Create training and test sets
+set.seed(13387)
+
+inTrain <- createDataPartition(y=my_data4$classe,
+                               p=0.7, list=FALSE)
+training <- my_data4[inTrain,]
+testing <- my_data4[-inTrain,]
+dim(training); dim(testing)
+
+```
+
+Next step is to choose the model. Since this is a classification problem we will first start with 
+a simple decision tree using the caret package  
+
+
+```{r }
+##creating model
+library(caret)
+library(rpart)
+modFit <- train(classe ~ .,method="rpart",data=training)
+
+predictions <- predict(modFit,newdata=testing)
+confusionMatrix(predictions,testing$classe)
+
+
+```
+
+As we can see the accuracy for this model is very less so we move on to our next model which is the random forest. We will be using 3 fold cross validation here 
+
+
+```{r }
+modFit_rf <- train(classe ~ .,method="rf",data=training,importance = T, 
+                                 trControl = trainControl(method = "cv", number = 3))
+
+predictions_rf <- predict(modFit_rf,newdata=testing)
+plot(modFit_rf)
+confusionMatrix(predictions_rf,testing$classe)
+
+predictions_final <- predict(modFit_rf,newdata=final_testing)
+
+
+```
+
+the accuracy for this model is much higher almost 99% when tested against our testing set according to the confusion matrix
+
+
+##conclusion:
+
+We will use the Random Forest Algorithim to predict since it has a much higher accuracy. 
+
+predicting values on actual testing data
+
+```{r }
+predict(modFit_rf,newdata=final_testing)
+
+```
+
+
